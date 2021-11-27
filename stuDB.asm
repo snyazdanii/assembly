@@ -3,7 +3,8 @@ stacksg segment para stack ;'stack'
 stacksg ends
 ;---------------------------------
 
-datasg  segment para common 'data'
+datasg  segment para common 'data'  
+    
 list	     db 10,13,'1:Add student'
              db 10,13,'2:Remove student'
 			 db	10,13,'3:Defrag'
@@ -11,17 +12,40 @@ list	     db 10,13,'1:Add student'
 			 db	10,13,'5:Load from file'
 			 db	10,13,'6:Save to file'
              db 10,13,'7:Exit'
-			 db 10,13,'$'	
-choice 	     db 10,13,"Enter your choice: $"	
-name1        db 10,13,"Enter Name: $"	
-Family       db 10,13,"Enter Family: $"
-Stu_no       db 10,13,"Enter Student NO.: $"	
-message1     db 10,13,"Press 'r' for Repeat or 'e' for Exit: $"		
-data         db  20,?,20 dup ('0'),'$'
-index        dw  0
-stu_db  db  1024 dup('0')
+			 db 10,13,'$'	  
+			 
+choice 	     db 10,13,"Enter your choice: $"  
 
-datasg  ends
+pORa         db 10,13,"1" ;1 peresent and 0 absent in DB
+	
+name1        db 10,13,"Enter Name: $"
+	
+Family       db 10,13,"Enter Family: $"     
+
+Stu_no       db 10,13,"Enter Student Number: $"
+
+point1       db 10,13,"Enter point1: $"
+                                       
+point2       db 10,13,"Enter point2: $"
+
+point3       db 10,13,"Enter point3: $"	 
+
+message1     db 10,13,"Press 'r' for Repeat or 'e' for Exit: $"
+
+message2     db 10,13,"do you want see all data? 'y' for yes or 'n' for no: $"
+
+message3     db 10,13,"Enter your keyNAME: $"	
+	                                 
+data         db  20,?,20 dup ('0'),'$'    
+        
+index        dw  0          
+
+stu_db       db  2048 dup('0')
+
+namekey      db '' 
+                                          
+datasg  ends            
+
 ;---------------------------------
 codesg  segment para common 'code'
 main    proc    far
@@ -30,9 +54,9 @@ main    proc    far
         mov     ax,datasg
         mov     ds,ax
 		mov     es,ax   
-		
+		 		 
 		;-----clear screen
-pl:		mov   ah,6
+pl:		mov   ah,6 ;scroll up window
 		mov   al,0 ;0 blank whole window
 		mov   ch,0
 		mov   cl,0
@@ -40,61 +64,75 @@ pl:		mov   ah,6
 		mov   dl,79
 		mov   bh,14
 		int   10h
-		;----- print list-----
+		;print list
 		lea dx,list
 		mov ah,9
 		int 21h
-		;------ message for choice--------------
+		;message for choice
 		lea dx,choice
 		mov ah,9
 		int 21h
-		;----- get the choice-----
+		;get the choice
 		mov ah,1
 		int 21h
-		;-----------------
-		cmp al,31h
-		je as
+		;check user choice
+		cmp al,31h  ;hex('1')=31H  :)
+		je addstu
 		cmp al,32h
-		je rs
+		je removestu
 		cmp al,33h
-		je de
+		je defragdb
 		cmp al,34h
-		je se
+		je search
 		cmp al,35h
-		je lf
+		je loadfile
 		cmp al,36h
-		je sf
+		je savefile
 		cmp al,37h
-		je exit
-   as:	call ast
+		je exit 
+		
+addstu:	
+        call adst
         jmp pl
-   rs:  call rst
+removestu:  
+        call rst
         jmp pl
-   de:	call dfd
+defragdb:	
+        call dfd
         jmp pl
-   se:  call ser
+search:  
+        call ser
         jmp pl
-   lf:	call lfi
+loadfile:	
+        call lfi
         jmp pl
-   sf:  call sfi
+savefile:  
+        call sfi
         jmp pl
-		;-----------------
-exit:   mov ax,4c00h
+exit:   
+        mov ax,4c00h
         int 21h
-
 main    endp
-;------------------------
-ast   proc
-        ;------ message for data--------------
-ast1:	lea  dx,name1
+;add student proce
+adst   proc
+adst1:	lea  dx,name1 ;message for get name and ...
 		call getdata
 		lea  dx,family
 		call getdata
 		lea  dx,Stu_no
 		call getdata
-		mov stu_db[bx-1],';'
+		lea dx,point1
+		call getdata
+		lea dx,point2
+		call getdata
+		lea dx,point3
+		call getdata
+		mov stu_db[bx-1],'1' ;name,lastname,stuno,p1,p2,p3,1;
+		mov stu_db[bx],';' 
+		inc bx
+		mov index,bx
 		
-ast2:	lea dx,message1
+adst2:	lea dx,message1  ;continue add student
 		mov ah,9
 		int 21h
 		
@@ -102,14 +140,13 @@ ast2:	lea dx,message1
 		int 21h
 		
     	cmp al,'r'
-		je ast1
+		je adst1
 		cmp al,'e'
-		jne ast2
-		
+		jne adst2
 		
         ret 
-ast   endp
-;------------------------
+adst   endp
+;remove student
 rst   proc
         
         ret 
@@ -119,11 +156,41 @@ dfd   proc
         
         ret 
 dfd   endp
-;------------------------
+;search
 ser   proc
-        
-        ret 
-ser   endp
+      ;request for all data or a key?
+      lea dx,message2
+      mov ah,9
+      int 21h
+	  ;get choise
+	  mov ah,1
+	  int 21h
+	  ;compare 
+	  cmp al,'y'
+	  jmp ser1
+	  cmp al,'n'
+	  jmp ser2
+
+sr1:  call ser1
+sr2:  call ser2
+	  ret
+ser endp
+
+ser1 proc
+     lea dx,message1
+     mov ah,9
+     int 21h 
+     ret
+end proc
+ser2 proc
+     ;get nameKAy   
+	  lea dx,message3
+      mov ah,9
+	  int 21h
+	  mov ah , 01h
+	  lea dx,  namekey 
+	  int 21h
+end proc        
 ;------------------------
 lfi   proc
         
@@ -136,23 +203,23 @@ sfi   proc
 sfi   endp
 ;------------------------
 getdata  proc
-          ;------ message for data--------------
+        ;------ message for data--------------
 		mov ah,9
 		int 21h
 		;----- get input string
 		mov ah,0ah
 		lea dx,data
 		int 21h
-		;---------------------
-		mov bx,index   ;bx index from stu_db
+		;-------add stu to DB
+		mov bx,index   ;bx index of start stu_db
 		lea si,data+2
 		lea di,stu_db[bx]
 		mov cl,data+1
 		mov ch,0
 		add bx,cx
-		cld
+		cld         
 		rep movsb
-		mov stu_db[bx],','
+		mov stu_db[bx],','   ;st1,st2,...
 		inc bx
 		mov index,bx
         ;---------------------
