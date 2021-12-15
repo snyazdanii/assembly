@@ -15,10 +15,8 @@ list	     db 10,13,'1:Add student'
 			 db 10,13,'$'	  
 			 
 choice 	     db 10,13,"Enter your choice: $"  
-
-pORa         db 10,13,"1" ;1 peresent and 0 absent in DB
 	
-name1         db 10,13,"Enter Name: $"
+name1        db 10,13,"Enter Name: $"
 	
 Family       db 10,13,"Enter Family: $"     
 
@@ -38,11 +36,15 @@ message3     db 10,13,"Enter your keyNAME: $"
 	                                 
 data         db  20,?,20 dup ('0'),'$'  ;max,len,initialization,/0  
         
-index        dw  0          
+index        dw  0 
+
+ikeyarr      dw  0        
 
 stu_db       db  1024 dup('0')
 
-namekey      db '' 
+namekey      db ''
+
+keyarr       dw 10 dup('0')
                                           
 datasg  ends            
 
@@ -101,7 +103,7 @@ defragdb:
         ;call dfd
         jmp pl
 search:  
-        ;call ser
+        call ser
         jmp pl
 loadfile:	
         ;call lfi
@@ -120,7 +122,7 @@ adst    proc
     
 adst1:	lea  dx,name1 ;message for get name and ...
 		call getdata
-		lea  dx,family
+		lea  dx,family ;enter
 		call getdata
 		lea  dx,Stu_no
 		call getdata
@@ -165,8 +167,8 @@ getdata  proc
 		int 21h
 		;-------add stu to DB
 		mov bx,index   ;bx index of start stu_db
-		lea si,data+2
-		lea di,stu_db[bx]
+		lea si,data+2 ;data: 20 5 s a e e d
+		lea di,stu_db[bx]                   
 		;len+index:
 		mov cl,data+1
 		mov ch,0
@@ -179,6 +181,60 @@ getdata  proc
 		mov index,bx
         ret
 getdata  endp
+
+
+ser proc
+        ;get name key
+        lea dx,message3
+        mov ah,9
+        int 21h 
+        
+        mov ah,0ah
+		lea dx,data
+		int 21h              
+		
+		mov cl,data+1
+		mov ch,0
+		lea si,data+1
+		lea di,namekey
+        cld         
+		rep movsb
+		;search  
+   ; mov   cx,index
+   ; mov   bx,namekey 
+    
+    mov   si,0 ;stu[0]
+    mov   di,0 ;key[0]
+    
+matching:
+    mov   ax, si
+    cmp   ax,di
+    je    eq    
+    inc   si
+    cmp   index-1,si
+    je  exit
+    jmp matching
+      
+eq: 
+    inc si 
+    inc di 
+    
+    cmp di ,word ptr namekey[0] ;compare di ,len(key)
+    je  addkey 
+    jmp matching
+    
+addkey:
+    ;add key to arrkey
+    mov ax,keyarr[ikeyarr]
+    mov ax, si
+    inc ikeyarr 
+    ;re init di
+    lea   di,0 
+    jmp matching              
+    
+    ret
+ser endp    
+
 
 codesg  ends
         end        main
