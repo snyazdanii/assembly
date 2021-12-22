@@ -38,13 +38,13 @@ data         db  20,?,20 dup ('0'),'$'  ;max,len,initialization,/0
         
 index        dw  0 
 
-ikeyarr      dw  0        
+i      db  0        
 
 stu_db       db  1024 dup('0')
 
 namekey      db ''
 
-keyarr       dw 10 dup('0')
+keyarr       dw ''
                                           
 datasg  ends            
 
@@ -180,11 +180,12 @@ getdata  proc
 		inc bx
 		mov index,bx
         ret
+        
 getdata  endp
 
 
 ser proc
-        ;get name key
+        ;get name key       
         lea dx,message3
         mov ah,9
         int 21h 
@@ -200,39 +201,73 @@ ser proc
         cld         
 		rep movsb
 		;search  
-   ; mov   cx,index
-   ; mov   bx,namekey 
     
-    mov   si,0 ;stu[0]
-    mov   di,0 ;key[0]
+    mov si, 00h     ;adres khone aval stu_db
+    mov di, 01h     ;adres khone aval namekey
     
 matching:
-    mov   ax, si
-    cmp   ax,di
-    je    eq    
-    inc   si
-    cmp   index-1,si
-    je  exit
+    mov bl, stu_db[si]
+    mov cl, namekey[di]
+    
+    je    eq  
+    
+    ;if not equal   
+    inc   si  
+    cmp  index,si    ;len(stu_db) == si 
+    je   exit        ;ye jay dige
+    
     jmp matching
       
 eq: 
     inc si 
-    inc di 
+    inc di
     
-    cmp di ,word ptr namekey[0] ;compare di ,len(key)
+    mov cx,word ptr namekey
+    cmp cx,di
     je  addkey 
+    
+    
     jmp matching
     
-addkey:
-    ;add key to arrkey
-    mov ax,keyarr[ikeyarr]
-    mov ax, si
-    inc ikeyarr 
+addkey: 
+    ;backup si , di
+    mov ax,si  
+    mov bx,di
+
+    ;dx <- index of key in stu_db
+    mov ax,si
+    sub ax,word ptr namekey
+    ;add index of key to arrkey   keyarr[ikeyarr] <- dx
+    ;mov si,dx ;stu_db[dx]
+    mov bp,word ptr i
+    mov keyarr[bp],ax
+		
+    inc i 
+    
     ;re init di
-    lea   di,0 
+    mov   bx,word ptr namekey+1
     jmp matching              
     
+          
+          
+        mov bx,index   ;bx index of start stu_db
+		lea si,data+2 ;data: 20 5 s a e e d
+		lea di,stu_db[bx]                   
+		;len+index:
+		mov cl,data+1
+		mov ch,0
+		add bx,cx
+		;add data   
+		cld         
+		rep movsb
+		mov stu_db[bx],','   ;firstname,lastname,...
+		inc bx
+		mov index,bx
+    
+    
+    
     ret
+    
 ser endp    
 
 
