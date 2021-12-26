@@ -38,13 +38,15 @@ data         db  20,?,20 dup ('0'),'$'  ;max,len,initialization,/0
         
 index        dw  0 
 
-i      db  0        
+i            db  0        
 
 stu_db       db  1024 dup('0')
 
-namekey      db ''
+namekey      db  15   dup('0')  
 
-keyarr       dw ''
+arrkey       dw  '00'
+
+arrarrkey    dw  5    dup('00')
                                           
 datasg  ends            
 
@@ -195,6 +197,7 @@ ser proc
 		int 21h              
 		
 		mov cl,data+1
+		inc cl
 		mov ch,0
 		lea si,data+1
 		lea di,namekey
@@ -208,10 +211,13 @@ ser proc
 matching:
     mov bl, stu_db[si]
     mov cl, namekey[di]
-    
+    cmp bl, cl
     je    eq  
     
-    ;if not equal   
+    ;if not equal 
+    ;re init di
+    mov   di,01h  
+    
     inc   si  
     cmp  index,si    ;len(stu_db) == si 
     je   exit        ;ye jay dige
@@ -222,7 +228,9 @@ eq:
     inc si 
     inc di
     
-    mov cx,word ptr namekey
+    mov cl, namekey 
+    mov ch, 0h
+    inc cx
     cmp cx,di
     je  addkey 
     
@@ -230,41 +238,38 @@ eq:
     jmp matching
     
 addkey: 
-    ;backup si , di
-    mov ax,si  
-    mov bx,di
+    ;we want use si without modify it
+    mov bp,si  
 
-    ;dx <- index of key in stu_db
-    mov ax,si
-    sub ax,word ptr namekey
-    ;add index of key to arrkey   keyarr[ikeyarr] <- dx
-    ;mov si,dx ;stu_db[dx]
-    mov bp,word ptr i
-    mov keyarr[bp],ax
-		
-    inc i 
+    ;dx <- index of key in stu_db  
+    mov bl, namekey      ;namekey[0] --> len(namekey)
+    mov bh, 0 
+    sub bp, bx 
+    lea ax, stu_db
+    add ax, bp           ;we need this address : stu_db[bp]  
+    ;add index of key to arrkey   keyarr[ikeyarr] <- ax
     
+    mov arrkey, ax                                    
+                                                       
+    mov dx,si ;backup si
+                                             
+    mov bl, i
+    mov bh, 00h                          
+	lea si, arrkey        ;source -> arrkey : xxxx
+	lea di, arrarrkey[bx] ;destination -> arrarrkey[i]                 
+	;len
+	mov cl, 02h
+	mov ch, 0
+	;add address   
+	cld         
+	rep movsb
+    inc i
+    inc i      
+    ;re init si
+    mov si, dx
     ;re init di
-    mov   bx,word ptr namekey+1
-    jmp matching              
-    
-          
-          
-        mov bx,index   ;bx index of start stu_db
-		lea si,data+2 ;data: 20 5 s a e e d
-		lea di,stu_db[bx]                   
-		;len+index:
-		mov cl,data+1
-		mov ch,0
-		add bx,cx
-		;add data   
-		cld         
-		rep movsb
-		mov stu_db[bx],','   ;firstname,lastname,...
-		inc bx
-		mov index,bx
-    
-    
+    mov di, 01h
+    jmp matching             
     
     ret
     
