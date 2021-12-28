@@ -10,7 +10,7 @@ list	     db 10,13,'1:Add student'
 			 db	10,13,'3:Defrag'
 			 db	10,13,'4:Search'
 			 db	10,13,'5:Load from file'
-			 db	10,13,'6:Save to file'
+			 db	10,13,'6:Save to file'                   
              db 10,13,'7:Exit'
 			 db 10,13,'$'	  
 			 
@@ -44,9 +44,9 @@ stu_db       db  1024 dup('0')
 
 namekey      db  15   dup('0')  
 
-arrkey       dw  '00'
+temp         db  '0'
 
-arrarrkey    dw  5    dup('00')
+key_db       db  5    dup('0')
                                           
 datasg  ends            
 
@@ -99,7 +99,7 @@ addstu:
         call adst
         jmp pl
 removestu:  
-        ;call rst
+        call rst
         jmp pl
 defragdb:	
         ;call dfd
@@ -205,8 +205,8 @@ ser proc
 		rep movsb
 		;search  
     
-    mov si, 00h     ;adres khone aval stu_db
-    mov di, 01h     ;adres khone aval namekey
+    mov si, 0000h     ;adres khone aval stu_db
+    mov di, 0001h     ;adres khone aval namekey
     
 matching:
     mov bl, stu_db[si]
@@ -220,7 +220,7 @@ matching:
     
     inc   si  
     cmp  index,si    ;len(stu_db) == si 
-    je   exit        ;ye jay dige
+    je   comp
     
     jmp matching
       
@@ -237,44 +237,72 @@ eq:
     
     jmp matching
     
-addkey: 
-    ;we want use si without modify it
-    mov bp,si  
+addkey:
 
-    ;dx <- index of key in stu_db  
-    mov bl, namekey      ;namekey[0] --> len(namekey)
-    mov bh, 0 
-    sub bp, bx 
-    lea ax, stu_db
-    add ax, bp           ;we need this address : stu_db[bp]  
-    ;add index of key to arrkey   keyarr[ikeyarr] <- ax
+    ;we want use si without modify it
+    mov dx,si 
     
-    mov arrkey, ax                                    
+    mov bl, namekey
+    sub dl, bl   ;sub len of key
+    
+    mov temp, dl                                    
                                                        
-    mov dx,si ;backup si
-                                             
+    mov dx,si ;backup si                                          
     mov bl, i
     mov bh, 00h                          
-	lea si, arrkey        ;source -> arrkey : xxxx
-	lea di, arrarrkey[bx] ;destination -> arrarrkey[i]                 
+	lea si, temp        ;source -> arrkey : xxxx
+	lea di, key_db[bx] ;destination -> arrarrkey[i]                 
 	;len
-	mov cl, 02h
+	mov cl, 01h
 	mov ch, 0
 	;add address   
 	cld         
 	rep movsb
-    inc i
-    inc i      
+    inc i 
     ;re init si
     mov si, dx
     ;re init di
     mov di, 01h
     jmp matching             
-    
-    ret
-    
+comp:
+    ret    
 ser endp    
 
+
+rst  proc
+     
+    call ser
+
+    mov si,0000h
+    dec si    
+del:
+    inc si 
+    mov ah, 00h 
+    mov al,key_db[si] 
+    mov di, ax 
+    
+      
+s1:    
+    mov bl,stu_db[di]
+    cmp bl, 3Bh
+    jne inc_di
+    dec di
+    jmp replacment    
+    
+inc_di:
+    inc di
+    jmp s1  
+  
+replacment:
+    mov stu_db[di],00h 
+    mov al,i
+    mov ah,00h
+    cmp ax,si 
+    jne  del 
+    je comp
+    ret  
+    
+rst  endp    
 
 codesg  ends
         end        main
