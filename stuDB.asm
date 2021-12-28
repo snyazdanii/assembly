@@ -1,17 +1,15 @@
-stacksg segment para stack ;'stack'
+stacksg segment para stack
    sb    db      1024 dup('0')
 stacksg ends
-;---------------------------------
-
-datasg  segment para common 'data'  
-    
+datasg  segment para common 'data'   
 list	     db 10,13,'1:Add student'
              db 10,13,'2:Remove student'
-			 db	10,13,'3:Defrag'
-			 db	10,13,'4:Search'
-			 db	10,13,'5:Load from file'
-			 db	10,13,'6:Save to file'                   
-             db 10,13,'7:Exit'
+	         db	10,13,'3:Defrag'
+	         db	10,13,'4:Search' 
+	         db	10,13,'5:SHOW DATABASE' 
+			 db	10,13,'6:Load from file'
+			 db	10,13,'7:Save to file'                   
+             db 10,13,'8:Exit'
 			 db 10,13,'$'	  
 			 
 choice 	     db 10,13,"Enter your choice: $"  
@@ -30,23 +28,29 @@ point3       db 10,13,"Enter point3: $"
 
 message1     db 10,13,"Press 'r' for Repeat or 'e' for Exit: $"
 
-message2     db 10,13,"do you want see all data? 'y' for yes or 'n' for no: $"
+message2     db 10,13,"do you want see all data? 'y' for yes or 'n' for no(after that you should choose which record that you want see): $"
 
 message3     db 10,13,"Enter your keyNAME: $"	
+
+message4     db 10,13,"NO MATCH $"
+
+message5     db 10,13,"data base is empty $" 
+
+message6     db 10,13,"some record found $"
 	                                 
 data         db  20,?,20 dup ('0'),'$'  ;max,len,initialization,/0  
         
-index        dw  0 
+index        dw  0000 
 
-i            db  0        
+i            db  00        
 
 stu_db       db  1024 dup('0')
 
-namekey      db  15   dup('0')  
+namekey      db  15   dup('2')  
 
 temp         db  '0'
 
-key_db       db  5    dup('0')
+key_db       db  5    dup('1')
                                           
 datasg  ends            
 
@@ -89,10 +93,12 @@ pl:		mov   ah,6 ;scroll up window
 		cmp al,34h
 		je search
 		cmp al,35h
+		je show_db
+		cmp al,36
 		je loadfile
-		cmp al,36h
-		je savefile
 		cmp al,37h
+		je savefile
+		cmp al,38h
 		je exit 
 		
 addstu:	
@@ -106,6 +112,9 @@ defragdb:
         jmp pl
 search:  
         call ser
+        jmp pl
+show_db:
+        call show
         jmp pl
 loadfile:	
         ;call lfi
@@ -187,24 +196,24 @@ getdata  endp
 
 
 ser proc
-        ;get name key       
-        lea dx,message3
-        mov ah,9
-        int 21h 
-        
-        mov ah,0ah
-		lea dx,data
-		int 21h              
+    ;get name key       
+    lea dx,message3
+    mov ah,9
+    int 21h 
+      
+    mov ah,0ah
+	lea dx,data
+	int 21h              
 		
-		mov cl,data+1
-		inc cl
-		mov ch,0
-		lea si,data+1
-		lea di,namekey
-        cld         
-		rep movsb
-		;search  
-    
+	mov cl,data+1
+	inc cl
+	mov ch,0
+	lea si,data+1
+	lea di,namekey
+    cld         
+	rep movsb
+	
+	;search   
     mov si, 0000h     ;adres khone aval stu_db
     mov di, 0001h     ;adres khone aval namekey
     
@@ -216,11 +225,12 @@ matching:
     
     ;if not equal 
     ;re init di
-    mov   di,01h  
-    
-    inc   si  
+    mov   di,01h
+      
     cmp  index,si    ;len(stu_db) == si 
-    je   comp
+    je   endser    
+    inc   si  
+
     
     jmp matching
       
@@ -264,22 +274,46 @@ addkey:
     ;re init di
     mov di, 01h
     jmp matching             
-comp:
-    ret    
+endser: 
+    cmp index,00h  ;stu_db is empty
+    je  show_databaseisempty
+    cmp index,00h  ;stu_db is not empty and some record found
+    jg  show_found
+    cmp i,00h      ;stu_db is not empty and no match found
+    je  show_notfound
+ 
+show_databaseisempty:
+    lea dx,message5
+    mov ah,9
+    int 21h 
+    jmp finishser
+show_found:
+    lea dx,message6
+    mov ah,9
+    int 21h
+    jmp finishser    
+show_notfound:
+    lea dx,message4
+    mov ah,9
+    int 21h
+    jmp finishser
+finishser:     
+    ret           
 ser endp    
-
 
 rst  proc
      
     call ser
+    cmp index,00h
+    je  retu
 
-    mov si,0000h
+    mov si,0000h  ;index of key_db array
     dec si    
 del:
     inc si 
     mov ah, 00h 
     mov al,key_db[si] 
-    mov di, ax 
+    mov di, ax     ;di index of a finded record
     
       
 s1:    
@@ -290,7 +324,7 @@ s1:
     jmp replacment    
     
 inc_di:
-    inc di
+    inc di 
     jmp s1  
   
 replacment:
@@ -298,11 +332,35 @@ replacment:
     mov al,i
     mov ah,00h
     cmp ax,si 
-    jne  del 
-    je comp
+    jne  del
+    jmp  retu
+retu:
     ret  
     
 rst  endp    
+
+show proc
+    lea dx,message2
+    mov ah,9
+    int 21h
+    mov ah,1
+	int 21h 
+    cmp al,'y'
+	je showall
+	cmp al,'n'
+	je serchandshow
+showall:
+	;show stu_db
+	jmp endshow
+serchandshow:	
+	call ser
+	cmp index,00h ;if no match -> index=0 -> there is nothing for show :)
+	je  endshow
+	;show stu_db with aindex key_db 
+	jmp endshow
+endshow:	
+    ret
+show endp    
 
 codesg  ends
         end        main
