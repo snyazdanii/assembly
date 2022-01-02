@@ -1,7 +1,8 @@
 stacksg segment para stack
    sb    db      1024 dup('0')
 stacksg ends
-datasg  segment para common 'data'   
+datasg  segment para common 'data'
+       
 list	     db 10,13,'1:Add student'
              db 10,13,'2:Remove student'
 	         db	10,13,'3:Defrag'
@@ -36,22 +37,30 @@ message4     db 10,13,"NO MATCH $"
 
 message5     db 10,13,"data base is empty $" 
 
-message6     db 10,13,"some record found $"
+message6     db 10,13,"some record found $"    
+
+message7     db 10,13,"no record for defrag $"  
+
+message8     db 10,13,"defrag operated successfully $"
 	                                 
 data         db  20,?,20 dup ('0'),'$'  ;max,len,initialization,/0  
         
-index        dw  0000 
+index        dw  0000    ;stu_db
 
-i            db  00        
+i            db  00      ;key_db
 
-stu_db       db  1024 dup('0')
+j            db  00      ;removed_db
 
-namekey      db  15   dup('2')  
+stu_db       db  256  dup('0')           
 
-temp         db  '0'
+key_db       db  5    dup('0')        
 
-key_db       db  5    dup('1')
+removed_db   db  5    dup('0')
                                           
+namekey      db  15   dup('0')  
+
+temp         db  '0'   
+                           
 datasg  ends            
 
 ;---------------------------------
@@ -108,7 +117,7 @@ removestu:
         call rst
         jmp pl
 defragdb:	
-        ;call dfd
+        call dfd
         jmp pl
 search:  
         call ser
@@ -133,7 +142,7 @@ adst    proc
     
 adst1:	lea  dx,name1 ;message for get name and ...
 		call getdata
-		lea  dx,family ;enter
+		lea  dx,family 
 		call getdata
 		lea  dx,Stu_no
 		call getdata
@@ -195,7 +204,15 @@ getdata  proc
 getdata  endp
 
 
-ser proc
+ser proc 
+    mov i,00h
+    mov bx,0000h
+ re:
+    mov key_db[bx],'0'
+    inc bx
+    cmp bx,0014h
+    jne re
+     
     ;get name key       
     lea dx,message3
     mov ah,9
@@ -225,12 +242,12 @@ matching:
     
     ;if not equal 
     ;re init di
-    mov   di,01h
+    mov   di,0001h
       
     cmp  index,si    ;len(stu_db) == si 
     je   endser    
-    inc   si  
-
+    inc   si 
+    
     
     jmp matching
       
@@ -253,15 +270,14 @@ addkey:
     mov dx,si 
     
     mov bl, namekey
-    sub dl, bl   ;sub len of key
-    
+    sub dl, bl   ;sub len of key     
     mov temp, dl                                    
                                                        
     mov dx,si ;backup si                                          
     mov bl, i
     mov bh, 00h                          
 	lea si, temp        ;source -> arrkey : xxxx
-	lea di, key_db[bx] ;destination -> arrarrkey[i]                 
+	lea di, key_db[bx]  ;destination -> arrarrkey[i]                 
 	;len
 	mov cl, 01h
 	mov ch, 0
@@ -272,7 +288,7 @@ addkey:
     ;re init si
     mov si, dx
     ;re init di
-    mov di, 01h
+    mov di, 0001h
     jmp matching             
 endser: 
     cmp index,00h  ;stu_db is empty
@@ -284,62 +300,86 @@ endser:
  
 show_databaseisempty:
     lea dx,message5
-    mov ah,9
+    mov ah,09h
     int 21h 
     jmp finishser
 show_found:
     lea dx,message6
-    mov ah,9
+    mov ah,09h
     int 21h
     jmp finishser    
 show_notfound:
     lea dx,message4
-    mov ah,9
+    mov ah,09h
     int 21h
     jmp finishser
 finishser:     
     ret           
 ser endp    
 
-rst  proc
+rst  proc 
+    ;stu_db is empty ?
+    cmp index,00h
+    je  endrm
      
     call ser
-    cmp index,00h
-    je  retu
-
-    mov si,0000h  ;index of key_db array
-    dec si    
-del:
-    inc si 
+    
+    ;removed_db <- key_db
+    mov bx,0000h                          
+	lea si, key_db[bx]        
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	lea di, removed_db[bx] ;bara hazf da hin ejra ronevesht mishe                 
+	;len
+	mov cl, i
+	mov ch, 0   
+	cld         
+	rep movsb
+    
+    ;j <- i                         
+	lea si, i 
+	lea di, j                 
+	;len
+	mov cl, 1
+	mov ch, 0   
+	cld         
+	rep movsb      
+	
+	;start removing
+    mov al,i
+    mov ah,00h
+    mov si,ax  ;si= index of key_db array
+del:  
+    dec si
+    cmp si,0ffffh 
+    je  endrm   
+    
     mov ah, 00h 
     mov al,key_db[si] 
-    mov di, ax     ;di index of a finded record
-    
-      
-s1:    
+    mov di, ax     ;di index of a finded record     
+s1:      
     mov bl,stu_db[di]
     cmp bl, 3Bh
     jne inc_di
-    dec di
+    dec di 
     jmp replacment    
     
 inc_di:
     inc di 
     jmp s1  
   
-replacment:
-    mov stu_db[di],00h 
-    mov al,i
-    mov ah,00h
-    cmp ax,si 
-    jne  del
-    jmp  retu
-retu:
+replacment:    
+    ;1 -> 0
+    mov stu_db[di],00h    
+    jmp  del  
+    
+endrm:
     ret  
     
 rst  endp    
 
+
 show proc
+    ;key_db meghdardehi shode ast
     lea dx,message2
     mov ah,9
     int 21h
@@ -348,20 +388,112 @@ show proc
     cmp al,'y'
 	je showall
 	cmp al,'n'
-	je serchandshow
+	je showkey
 showall:
+    mov   ah,6 ;scroll up window
+    mov   al,0 ;0 blank whole window
+	mov   ch,0
+	mov   cl,0
+	mov   dh,24
+	mov   dl,79
+	mov   bh,14
+	int   10h
 	;show stu_db
+	mov si,00h
+l1:   
+    mov	dl, offset stu_db[si]
+    mov ah,02h ;ah=05h for show in the printer :))))
+    int 21h
+    inc si
+    cmp si,index
+    jne l1
 	jmp endshow
-serchandshow:	
+	
+showkey:  
+    mov   ah,6 ;scroll up window
+    mov   al,0 ;0 blank whole window
+	mov   ch,0
+	mov   cl,0
+	mov   dh,24
+	mov   dl,79
+	mov   bh,14
+	int   10h
+	
 	call ser
-	cmp index,00h ;if no match -> index=0 -> there is nothing for show :)
+		
+	cmp i,00h ;if no match -> i=0 -> there is nothing for show :)
 	je  endshow
 	;show stu_db with aindex key_db 
+	
+	mov di,00h
+l2:
+    mov al, key_db[di] 
+    mov ah,00h
+    mov si,ax 
+l4:
+    mov	dl, offset stu_db[si]
+    mov bl, stu_db[si]
+    cmp bl,3Bh
+    jne l3
+    
+    inc di
+    mov al, i  
+    mov ah,00h
+    cmp di,ax
+    jne l2
+    	 
 	jmp endshow
+l3:
+    mov ah,02h
+    int 21h
+    inc si
+    jmp l4	
 endshow:	
     ret
 show endp    
+                   
+                   
+dfd proc   ;removed_db   
+    cmp j,00h
+    je  nodfd
+    ;j>0  
+    mov al, j
+    mov ah, 00h    
+    mov si,ax 
+     
+st: 
+    dec si  
+    cmp si,0ffffh
+    je  enddfd       
+           
+    mov bl,removed_db[si] 
+    mov bh,00h;        
+    inc bx
+     
+replace:    
+    mov stu_db[bx],'@'  
+    dec bx
+    cmp stu_db[bx],';'
+    je st
+    cmp bx,0ffffh
+    je st 
+    jmp replace
+    
+    
+nodfd:
+    lea dx,message7
+    mov ah,9
+    int 21h          
+    ret     
+enddfd:
+    lea dx,message8
+    mov ah,9
+    int 21h          
+    ret        
+dfd endp
 
+        
+        
 codesg  ends
         end        main
        
