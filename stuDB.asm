@@ -148,7 +148,7 @@ adst1:	lea  dx,name1 ;message for get name and ...
 		call getdata
 		;get points
 		lea dx,point1
-		call getdata
+		call getdata 	
 		lea dx,point2
 		call getdata
 		lea dx,point3
@@ -210,7 +210,7 @@ ser proc
  re:
     mov key_db[bx],'0'
     inc bx
-    cmp bx,0014h
+    cmp bx,0005h
     jne re
      
     ;get name key       
@@ -323,31 +323,11 @@ rst  proc
     je  endrm
      
     call ser
-    
-    ;removed_db <- key_db
-    mov bx,0000h                          
-	lea si, key_db[bx]        
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	lea di, removed_db[bx] ;bara hazf da hin ejra ronevesht mishe                 
-	;len
-	mov cl, i
-	mov ch, 0   
-	cld         
-	rep movsb
-    
-    ;j <- i                         
-	lea si, i 
-	lea di, j                 
-	;len
-	mov cl, 1
-	mov ch, 0   
-	cld         
-	rep movsb      
-	
+    	
 	;start removing
     mov al,i
     mov ah,00h
-    mov si,ax  ;si= index of key_db array
+    mov si,ax  ;si= index+1 of key_db array
 del:  
     dec si
     cmp si,0ffffh 
@@ -368,11 +348,40 @@ inc_di:
     jmp s1  
   
 replacment:    
-    ;1 -> 0
-    mov stu_db[di],00h    
+    cmp stu_db[di],30h
+    je  del     
+    
+    ;1 -> 0 
+    mov stu_db[di],00h 
+;removed_db <- key_db   
+    mov ax,si
+    mov dx,di
+        
+    mov bl,j
+    mov bh,00h                    
+	lea si, key_db[si] 
+	lea di, removed_db[bx] 
+	inc j              
+	;len
+	mov cx,0001h   
+	cld         
+	rep movsb
+	   
+;   ;j <- i                         
+;	lea si, i 
+;	lea di, j                 
+;	;len
+;	mov cl, 1
+;	mov ch, 0   
+;	cld         
+;	rep movsb 
+	 
+	mov si,ax 
+	mov di,dx
+	  
     jmp  del  
     
-endrm:
+endrm:   
     ret  
     
 rst  endp    
@@ -467,19 +476,19 @@ st:
     je  enddfd       
            
     mov bl,removed_db[si] 
-    mov bh,00h;        
-    inc bx
+    mov bh,00h       
      
 replace:    
     mov stu_db[bx],'@'  
-    dec bx
-    cmp stu_db[bx],';'
-    je st
-    cmp bx,0ffffh
-    je st 
-    jmp replace
+    inc bx
+    cmp stu_db[bx],';' 
+    je replsemi
+    jmp replace 
     
-    
+replsemi: 
+    mov stu_db[bx],'@' 
+    jmp st
+
 nodfd:
     lea dx,message7
     mov ah,9
@@ -488,11 +497,52 @@ nodfd:
 enddfd:
     lea dx,message8
     mov ah,9
-    int 21h          
+    int 21h
+    mov j,00h
+    mov bx,0000h
+rein:
+    mov removed_db[bx],'0'
+    inc bx
+    cmp bx,0005h
+    jne rein 
+    call maindfd 
+         
     ret        
 dfd endp
 
-        
+maindfd proc
+    mov bx,0ffffh  
+star:
+    inc bx
+    cmp stu_db[bx],'@'
+    je  findendof@    ;index of @ is in the bx
+    jmp star
+findendof@:
+    mov si,bx 
+inc_si:
+    inc si   
+    cmp stu_db[si],'@' 
+    je  inc_si
+    jmp exchang       ;index of endof@ is in the si   
+    
+exchang: 
+ 
+    cmp si,index                       
+    je  endmaindfd
+    
+    mov al,stu_db[bx]
+    mov cl,stu_db[si] 
+    mov stu_db[bx] , cl
+    mov stu_db[si] , al
+      
+    jmp star
+     
+endmaindfd:
+    mov index,bx       
+    ret 
+    
+    ;;;;;;;;;;;;;;a bug
+maindfd endp    
         
 codesg  ends
         end        main
