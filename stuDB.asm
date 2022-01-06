@@ -21,12 +21,8 @@ Family       db 10,13,"Enter Family: $"
 
 Stu_no       db 10,13,"Enter Student Number: $"
 
-point1       db 10,13,"Enter point1: $"
+point        db 10,13,"Enter point: $"
                                        
-point2       db 10,13,"Enter point2: $"
-
-point3       db 10,13,"Enter point3: $"	 
-
 message1     db 10,13,"Press 'r' for Repeat or 'e' for Exit: $"
 
 message2     db 10,13,"do you want see all data? 'y' for yes or 'n' for no(after that you should choose which record that you want see): $"
@@ -41,15 +37,19 @@ message6     db 10,13,"some record found $"
 
 message7     db 10,13,"no record for defrag $"  
 
-message8     db 10,13,"defrag operated successfully $"
+message8     db 10,13,"replase @ was done successfully $" 
+
+message9     db 10,13,"defrag operated successfully $" 
+
+;messageA     db 10,13,"acceptable format XX (e.g. 9 -> 09 , 10 -> 10) $"
 	                                 
-data         db  20,?,20 dup ('0'),'$'  ;max,len,initialization,/0  
+data         db  20,?,20 dup ('0'),'$'                    ;max,len,initialization,/0  
         
-index        dw  0000    ;stu_db
+index        dw  0000h    ;stu_db
 
-i            db  00      ;key_db
+i            db  00h      ;key_db
 
-j            db  00      ;removed_db
+j            db  00h      ;removed_db
 
 stu_db       db  256  dup('0')           
 
@@ -59,7 +59,9 @@ removed_db   db  5    dup('0')
                                           
 namekey      db  15   dup('0')  
 
-temp         db  '0'   
+temp         db  00  
+                                                   
+avg          db  2    dup('0');avg(DAHGAN) , avg+1(YECAN)     
                            
 datasg  ends            
 
@@ -145,19 +147,21 @@ adst1:	lea  dx,name1 ;message for get name and ...
 		lea  dx,family 
 		call getdata
 		lea  dx,Stu_no
-		call getdata
-		;get points
-		lea dx,point1
-		call getdata 	
-		lea dx,point2
-		call getdata
-		lea dx,point3
-		call getdata
-		mov stu_db[bx],'1' ;name,lastname,stuno,p1,p2,p3,1;
-		inc bx
-		mov stu_db[bx],';' 
-		inc bx
-		mov index,bx
+		call getdata 
+		call calc_avg
+		mov  ah,avg
+		mov  al,avg+1
+		mov  stu_db[bx],ah
+		inc  bx  
+		mov  stu_db[bx],al 
+		inc  bx 
+		mov  stu_db[bx],','
+		inc  bx
+		mov  stu_db[bx],'1' ;name,lastname,stuno,p1,p2,p3,avg,1;
+		inc  bx
+		mov  stu_db[bx],';' 
+		inc  bx
+		mov  index,bx
 		
 adst2:	lea dx,message1  ;continue add student
 		mov ah,9
@@ -174,8 +178,67 @@ adst2:	lea dx,message1  ;continue add student
         ret 
         
 adst   endp       
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+calc_avg proc
+        ;get points	
+get_point:
+;for point1        	
+		lea dx,point
+		call getdata
+		;data : 20 1/2 x/xx
+		cmp data+1,01h
+		je  lt10
+		jmp egt10 
+        lea dx,point
+		call getdata
+		;data : 20 1/2 x/xx
+		cmp data+1,01h
+		je  lt10
+		jmp egt10
+		lea dx,point
+		call getdata
+		;data : 20 1/2 x/xx
+		cmp data+1,01h
+		je  lt10
+		jmp egt10
+        
+        
+;avg<-xx
+cavg:
+        mov al,temp
+        mov ah,00h 
+        mov bl,03h
+        div bl	
+                             
+        ;al(DAHGAN) ah(YECAN)  
+        mov ah,00h	        
+        mov bl, 0ah
+        div bl
+        add al,30h
+        add ah,30h   
+        mov avg,al
+        mov avg+1,ah                 
+        ret		
 
-;some code cutted
+                           ;9 12 20
+lt10:                      ;temp=00
+        mov al,data+1      ;temp=00+09=09
+        sub al,30h         ;temp=09+0a=13   13+02=15
+        add temp,al        ;temp=15+14=29   29+00=29
+        jmp calced_temp
+egt10:	
+        mov al,data+1
+        sub al,30h   
+        mov bl,0ah      
+        mul bl        
+        add temp,al
+                          
+		mov al,data+2
+        sub al,30h
+        add temp,al
+        jmp calced_temp        
+		                               
+calc_avg endp   
 
 getdata  proc
         ;------ message for data--------------
@@ -235,6 +298,9 @@ ser proc
     mov di, 0001h     ;adres khone aval namekey
     
 matching:
+    cmp  index,si    ;len(stu_db) == si 
+    je   endser      
+    
     mov bl, stu_db[si]
     mov cl, namekey[di]
     cmp bl, cl
@@ -243,12 +309,7 @@ matching:
     ;if not equal 
     ;re init di
     mov   di,0001h
-      
-    cmp  index,si    ;len(stu_db) == si 
-    je   endser    
     inc   si 
-    
-    
     jmp matching
       
 eq: 
@@ -352,7 +413,7 @@ replacment:
     je  del     
     
     ;1 -> 0 
-    mov stu_db[di],00h 
+    mov stu_db[di],'0' 
 ;removed_db <- key_db   
     mov ax,si
     mov dx,di
@@ -366,15 +427,6 @@ replacment:
 	mov cx,0001h   
 	cld         
 	rep movsb
-	   
-;   ;j <- i                         
-;	lea si, i 
-;	lea di, j                 
-;	;len
-;	mov cl, 1
-;	mov ch, 0   
-;	cld         
-;	rep movsb 
 	 
 	mov si,ax 
 	mov di,dx
@@ -474,7 +526,7 @@ st:
     dec si  
     cmp si,0ffffh
     je  enddfd       
-           
+              
     mov bl,removed_db[si] 
     mov bh,00h       
      
@@ -486,7 +538,7 @@ replace:
     jmp replace 
     
 replsemi: 
-    mov stu_db[bx],'@' 
+    mov stu_db[bx],'@'
     jmp st
 
 nodfd:
@@ -506,7 +558,12 @@ rein:
     cmp bx,0005h
     jne rein 
     call maindfd 
-         
+          
+    
+    lea dx,message9
+    mov ah,09h
+    int 21h  
+       
     ret        
 dfd endp
 
@@ -520,6 +577,8 @@ star:
 findendof@:
     mov si,bx 
 inc_si:
+    cmp si,index                       
+    je  endmaindfd
     inc si   
     cmp stu_db[si],'@' 
     je  inc_si
@@ -540,8 +599,6 @@ exchang:
 endmaindfd:
     mov index,bx       
     ret 
-    
-    ;;;;;;;;;;;;;;a bug
 maindfd endp    
         
 codesg  ends
