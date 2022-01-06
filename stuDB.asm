@@ -60,8 +60,6 @@ removed_db   db  5    dup('0')
 namekey      db  15   dup('0')  
 
 temp         db  00  
-                                                   
-avg          db  2    dup('0');avg(DAHGAN) , avg+1(YECAN)     
                            
 datasg  ends            
 
@@ -148,12 +146,103 @@ adst1:	lea  dx,name1 ;message for get name and ...
 		call getdata
 		lea  dx,Stu_no
 		call getdata 
-		call calc_avg
-		mov  ah,avg
-		mov  al,avg+1
-		mov  stu_db[bx],ah
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;NEW		
+		
+;calc sum of point:
+		mov temp,00h    
+;for point1        	
+		lea dx,point
+		call getdata
+		mov ah,00h
+		cmp data+1,01h
+		je  lt10_1
+		jmp egt10_1
+		                         ;9 12 20
+lt10_1:
+                           ;temp=00
+        mov al,data+2      ;temp=00+09=09
+        sub al,30h         ;temp=09+0a=13   13+02=15                      
+        add temp,al        ;temp=15+14=29   29+00=29
+        jmp p2
+egt10_1:
+        mov al,data+2
+        sub al,30h   
+        mov bl,0ah      
+        mul bl        
+        add temp,al
+                          
+		mov al,data+3
+        sub al,30h
+        add temp,al       		
+            
+               
+;for point2:
+p2:  		                                   
+        lea dx,point
+		call getdata
+		mov ah,00h
+		cmp data+1,01h
+		je  lt10_2
+		jmp egt10_2 
+		                         
+lt10_2:                    
+        mov al,data+2      
+        sub al,30h         
+        add temp,al        
+        jmp p3
+egt10_2:	
+        mov al,data+2
+        sub al,30h   
+        mov dl,0ah      
+        mul dl        
+        add temp,al  
+                          
+		mov al,data+3
+        sub al,30h
+        add temp,al       		
+                
+;for point3: 
+p3:       
+		lea dx,point    
+		call getdata
+		mov ah,00h
+		cmp data+1,01h
+		je  lt10_3
+		jmp egt10_3
+                                     
+lt10_3:                      
+        mov al,data+2      
+        sub al,30h         
+        add temp,al        
+        jmp cavg
+egt10_3:	
+        mov al,data+2
+        sub al,30h   
+        mov dl,0ah      
+        mul dl        
+        add temp,al
+                          
+		mov al,data+3
+        sub al,30h
+        add temp,al       		
+        
+;avg<-xx
+cavg:
+        mov al,temp
+        mov ah,00h 
+        mov dl,03h
+        div dl	;ax/dl=al                     
+        ;al(DAHGAN) ah(YECAN)   
+        mov ah,00h      
+        mov dl, 0ah 
+        div dl
+        add al,30h
+        add ah,30h 
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;		 
+		mov  stu_db[bx],al
 		inc  bx  
-		mov  stu_db[bx],al 
+		mov  stu_db[bx],ah 
 		inc  bx 
 		mov  stu_db[bx],','
 		inc  bx
@@ -177,68 +266,8 @@ adst2:	lea dx,message1  ;continue add student
 		
         ret 
         
-adst   endp       
- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-calc_avg proc
-        ;get points	
-get_point:
-;for point1        	
-		lea dx,point
-		call getdata
-		;data : 20 1/2 x/xx
-		cmp data+1,01h
-		je  lt10
-		jmp egt10 
-        lea dx,point
-		call getdata
-		;data : 20 1/2 x/xx
-		cmp data+1,01h
-		je  lt10
-		jmp egt10
-		lea dx,point
-		call getdata
-		;data : 20 1/2 x/xx
-		cmp data+1,01h
-		je  lt10
-		jmp egt10
-        
-        
-;avg<-xx
-cavg:
-        mov al,temp
-        mov ah,00h 
-        mov bl,03h
-        div bl	
-                             
-        ;al(DAHGAN) ah(YECAN)  
-        mov ah,00h	        
-        mov bl, 0ah
-        div bl
-        add al,30h
-        add ah,30h   
-        mov avg,al
-        mov avg+1,ah                 
-        ret		
-
-                           ;9 12 20
-lt10:                      ;temp=00
-        mov al,data+1      ;temp=00+09=09
-        sub al,30h         ;temp=09+0a=13   13+02=15
-        add temp,al        ;temp=15+14=29   29+00=29
-        jmp calced_temp
-egt10:	
-        mov al,data+1
-        sub al,30h   
-        mov bl,0ah      
-        mul bl        
-        add temp,al
-                          
-		mov al,data+2
-        sub al,30h
-        add temp,al
-        jmp calced_temp        
-		                               
-calc_avg endp   
+adst   endp                                                      
+  
 
 getdata  proc
         ;------ message for data--------------
@@ -450,9 +479,12 @@ show proc
 	je showall
 	cmp al,'n'
 	je showkey
-showall:
+showall: 
+    cmp index,00h ;if no record -> index=0 -> there is nothing for show :)
+	je  endshow
+	
     mov   ah,6 ;scroll up window
-    mov   al,0 ;0 blank whole window
+	mov   al,0 ;0 blank whole window
 	mov   ch,0
 	mov   cl,0
 	mov   dh,24
@@ -472,7 +504,7 @@ l1:
 	
 showkey:  
     mov   ah,6 ;scroll up window
-    mov   al,0 ;0 blank whole window
+	mov   al,0 ;0 blank whole window
 	mov   ch,0
 	mov   cl,0
 	mov   dh,24
@@ -509,7 +541,9 @@ l3:
     int 21h
     inc si
     jmp l4	
-endshow:	
+endshow:
+	mov ah,1          ;just for wait
+    int 21h	
     ret
 show endp    
                    
