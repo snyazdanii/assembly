@@ -40,8 +40,6 @@ message7     db 10,13,"no record for defrag $"
 message8     db 10,13,"replase @ was done successfully $" 
 
 message9     db 10,13,"defrag operated successfully $" 
-
-;messageA     db 10,13,"acceptable format XX (e.g. 9 -> 09 , 10 -> 10) $"
 	                                 
 data         db  20,?,20 dup ('0'),'$'                    ;max,len,initialization,/0  
         
@@ -145,8 +143,39 @@ adst1:	lea  dx,name1 ;message for get name and ...
 		lea  dx,family 
 		call getdata
 		lea  dx,Stu_no
-		call getdata 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;NEW		
+		call getdata 	
+        
+        call addpoints 
+                               	 
+		mov  stu_db[bx],al
+		inc  bx  
+		mov  stu_db[bx],ah 
+		inc  bx 
+		mov  stu_db[bx],','
+		inc  bx
+		mov  stu_db[bx],'1' ;name,lastname,stuno,p1,p2,p3,avg,1;
+		inc  bx
+		mov  stu_db[bx],';' 
+		inc  bx
+		mov  index,bx
+		
+adst2:	lea dx,message1  ;continue add student
+		mov ah,9
+		int 21h
+		
+		mov ah,1
+		int 21h
+		
+    	cmp al,'r'
+		je adst1
+		cmp al,'e'
+		jne adst2
+		
+        ret 
+        
+adst   endp                                                      
+
+addpoints proc
 		
 ;calc sum of point:
 		mov temp,00h    
@@ -231,43 +260,16 @@ cavg:
         mov al,temp
         mov ah,00h 
         mov dl,03h
-        div dl	;ax/dl=al                     
-        ;al(DAHGAN) ah(YECAN)   
+        div dl	;ax/dl=al 
+                              
         mov ah,00h      
         mov dl, 0ah 
         div dl
         add al,30h
-        add ah,30h 
+        add ah,30h
         
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;		 
-		mov  stu_db[bx],al
-		inc  bx  
-		mov  stu_db[bx],ah 
-		inc  bx 
-		mov  stu_db[bx],','
-		inc  bx
-		mov  stu_db[bx],'1' ;name,lastname,stuno,p1,p2,p3,avg,1;
-		inc  bx
-		mov  stu_db[bx],';' 
-		inc  bx
-		mov  index,bx
-		
-adst2:	lea dx,message1  ;continue add student
-		mov ah,9
-		int 21h
-		
-		mov ah,1
-		int 21h
-		
-    	cmp al,'r'
-		je adst1
-		cmp al,'e'
-		jne adst2
-		
-        ret 
-        
-adst   endp                                                      
-  
+        ret
+addpoints endp          
 
 getdata  proc
         ;------ message for data--------------
@@ -406,7 +408,8 @@ show_notfound:
 finishser:     
     ret           
 ser endp    
-
+ 
+ 
 rst  proc 
     ;stu_db is empty ?
     cmp index,00h
