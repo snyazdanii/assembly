@@ -57,7 +57,11 @@ removed_db   db  5    dup('0')
                                           
 namekey      db  15   dup('0')  
 
-temp         db  00  
+temp         db  00 
+
+handle_file  dw  ?
+
+path         db '/databse.txt',00h 
                            
 datasg  ends            
 
@@ -101,7 +105,7 @@ pl:		mov   ah,6 ;scroll up window
 		je search
 		cmp al,35h
 		je show_db
-		cmp al,36
+		cmp al,36h
 		je loadfile
 		cmp al,37h
 		je savefile
@@ -124,10 +128,10 @@ show_db:
         call show
         jmp pl
 loadfile:	
-        ;call lfi
+        call lofi
         jmp pl
 savefile:  
-        ;call sfi
+        call safi
         jmp pl
 exit:   
         mov ax,4c00h
@@ -635,9 +639,56 @@ exchang:
      
 endmaindfd:
     mov index,bx       
-    ret 
-maindfd endp    
+    ret   
+maindfd endp
+
+lofi proc
+    ;open
+    mov ah, 3dh
+    mov al, 10b   
+    lea dx, path
+    int 21h
+    mov handle_file, ax
+    ;read   
+    mov ah,3fh
+    mov bx,handle_file
+    mov cx,00ffh
+    lea dx,stu_db
+    int 21h
+    ;initial index 
+    dec ax
+    mov index,ax
+    ret
+lofi endp 
+   
+   
+safi proc 
+    ;creat 
+    mov ah,3ch
+    lea dx,path
+    int 21h
+    ;open
+    mov ah, 3dh
+    mov al, 10b 
+    lea dx,path
+    int 21h    
+    mov handle_file, ax 
+    ;write
+    mov ah,40h
+    mov bx,handle_file
+    mov cx,index
+    add al,cl
+    lea dx,stu_db
+    int 21h
+    ret
+safi endp  
+
+;creatFile
+
         
 codesg  ends
         end        main
-       
+   
+   
+   
+   
