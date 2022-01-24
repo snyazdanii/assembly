@@ -83,18 +83,18 @@ pl:		mov   ah,6 ;scroll up window
 		mov   dl,79
 		mov   bh,14
 		int   10h
-		;print list
+		;-----print list
 		lea dx,list
 		mov ah,9
 		int 21h
-		;message for choice
+		;-----message for choice
 		lea dx,choice
 		mov ah,9
 		int 21h
-		;get the choice
+		;-----get the choice
 		mov ah,1
 		int 21h
-		;check user choice
+		;-----check user choice
 		cmp al,31h  ;hex('1')=31H  :)
 		je addstu
 		cmp al,32h
@@ -139,31 +139,31 @@ exit:
 main    endp
 
 
-;add student proce
+;************add student proce*************
 adst    proc 
     
-adst1:	lea  dx,name1 ;message for get name and ...
+adst1:	lea  dx,name1              ;message for get name and ...
 		call getdata
 		lea  dx,family 
 		call getdata
 		lea  dx,Stu_no
 		call getdata 	
         
-        call addpoints 
-                               	 
-		mov  stu_db[bx],al
+        call addpoints             ;add points
+        ;add avg:                       	 
+		mov  stu_db[bx],al         ;add d
 		inc  bx  
-		mov  stu_db[bx],ah 
+		mov  stu_db[bx],ah         ;add u
 		inc  bx 
 		mov  stu_db[bx],','
 		inc  bx
-		mov  stu_db[bx],'1' ;name,lastname,stuno,p1,p2,p3,avg,1;
+		mov  stu_db[bx],'1'        ;name,lastname,stuno,p1,p2,p3,avg,1;
 		inc  bx
 		mov  stu_db[bx],';' 
 		inc  bx
 		mov  index,bx
 		
-adst2:	lea dx,message1  ;continue add student
+adst2:	lea dx,message1  ;continue or not
 		mov ah,9
 		int 21h
 		
@@ -178,7 +178,7 @@ adst2:	lea dx,message1  ;continue add student
         ret 
         
 adst   endp                                                      
-
+;************add points*************
 addpoints proc
 		
 ;calc sum of point:
@@ -193,9 +193,9 @@ addpoints proc
 		                         ;9 12 20
 lt10_1:
                            ;temp=00
-        mov al,data+2      ;temp=00+09=09
-        sub al,30h         ;temp=09+0a=13   13+02=15                      
-        add temp,al        ;temp=15+14=29   29+00=29
+        mov al,data+2      ;temp=00+09=09H
+        sub al,30h         ;temp=09+0a=13H   13+02=15H                      
+        add temp,al        ;temp=15+14=29H   29+00=29H
         jmp p2
 egt10_1:
         mov al,data+2
@@ -259,24 +259,25 @@ egt10_3:
         sub al,30h
         add temp,al       		
         
-;avg<-xx
+;avg<-ax<-xx
 cavg:
         mov al,temp
         mov ah,00h 
         mov dl,03h
-        div dl	;ax/dl=al 
+        div dl	     ;ax/dl=al   ->al(quotiont) ,ah(remininder)
                               
         mov ah,00h      
-        mov dl, 0ah 
-        div dl
+        mov dl,0ah 
+        div dl      ;->al(quotiont-dahgan) ,ah(remininder-yecan)
         add al,30h
         add ah,30h
         
         ret
-addpoints endp          
+addpoints endp         
 
+;************get data*************
 getdata  proc
-        ;------ message for data--------------
+        ;------ message for get data
 		mov ah,9
 		int 21h
 		;----- get input string
@@ -299,9 +300,9 @@ getdata  proc
 		mov index,bx
         ret
         
-getdata  endp
+getdata  endp         
 
-
+;************search*************
 ser proc 
     mov i,00h
     mov bx,0000h
@@ -311,15 +312,13 @@ ser proc
     cmp bx,0005h
     jne re
      
-    ;get name key       
+    ;get name key and store it      
     lea dx,message3
     mov ah,9
-    int 21h 
-      
+    int 21h      
     mov ah,0ah
 	lea dx,data
-	int 21h              
-		
+	int 21h            ;data: max len d-a-t-a  	
 	mov cl,data+1
 	inc cl
 	mov ch,0
@@ -329,8 +328,8 @@ ser proc
 	rep movsb
 	
 	;search   
-    mov si, 0000h     ;adres khone aval stu_db
-    mov di, 0001h     ;adres khone aval namekey
+    mov si, 0000h     ;first index of stu_db
+    mov di, 0001h     ;first index of valied namekey       ;len d-a-t-a
     
 matching:
     cmp  index,si    ;len(stu_db) == si 
@@ -342,7 +341,8 @@ matching:
     je    eq  
     
     ;if not equal 
-    ;re init di
+    ;re init di 
+    
     mov   di,0001h
     inc   si 
     jmp matching
@@ -351,24 +351,24 @@ eq:
     inc si 
     inc di
     
+    ;end of namekey?
     mov cl, namekey 
     mov ch, 0h
     inc cx
     cmp cx,di
-    je  addkey 
-    
+    je  addkey     
     
     jmp matching
-    
+        
 addkey:
-
-    ;we want use si without modify it
-    mov dx,si 
-    
+    ;we want use si without modify it 
+    mov dx,si  
+                     
+    ;rafte bodim jolo barmigardim :))
     mov bl, namekey
-    sub dl, bl   ;sub len of key     
-    mov temp, dl                                    
-                                                       
+    sub dl, bl   ;sub len of key from dl for finding first of key on the stu_db     
+    mov temp, dl ;temp->first index of record                                  
+    ;store temp:                                                   
     mov dx,si ;backup si                                          
     mov bl, i
     mov bh, 00h                          
@@ -376,16 +376,20 @@ addkey:
 	lea di, key_db[bx]  ;destination -> arrarrkey[i]                 
 	;len
 	mov cl, 01h
-	mov ch, 0
-	;add address   
+	mov ch, 0  
 	cld         
 	rep movsb
-    inc i 
-    ;re init si
+	
+	
+    inc i   ;i->index of key_db
+    ;re init si:
     mov si, dx
-    ;re init di
-    mov di, 0001h
-    jmp matching             
+    ;re init di:
+    mov di, 0001h 
+    
+    jmp matching
+    
+;serach finished                 
 endser: 
     cmp index,00h  ;stu_db is empty
     je  show_databaseisempty
@@ -413,7 +417,7 @@ finishser:
     ret           
 ser endp    
  
- 
+;************remove student proce************* 
 rst  proc 
     ;stu_db is empty ?
     cmp index,00h
@@ -444,7 +448,8 @@ inc_di:
     inc di 
     jmp s1  
   
-replacment:    
+replacment:   
+    ;age az ghabl sefr nabod :)
     cmp stu_db[di],30h
     je  del     
     
@@ -474,9 +479,9 @@ endrm:
     
 rst  endp    
 
-
+;************show student proce*************
 show proc
-    ;key_db meghdardehi shode ast
+    
     lea dx,message2
     mov ah,9
     int 21h
@@ -486,8 +491,9 @@ show proc
 	je showall
 	cmp al,'n'
 	je showkey
+	
 showall: 
-    cmp index,00h ;if no record -> index=0 -> there is nothing for show :)
+    cmp index,00h ;if no record -> index=0 -> there is nothing for show 
 	je  endshow
 	
     mov   ah,6 ;scroll up window
@@ -497,7 +503,8 @@ showall:
 	mov   dh,24
 	mov   dl,79
 	mov   bh,14
-	int   10h
+	int   10h 
+	
 	;show stu_db
 	mov si,00h
 l1:   
@@ -522,16 +529,19 @@ showkey:
 	call ser
 		
 	cmp i,00h ;if no match -> i=0 -> there is nothing for show :)
-	je  endshow
-	;show stu_db with aindex key_db 
+	je  endshow           
 	
-	mov di,00h
+	;show stu_db with a index key_db 
+	
+	mov di,00h     ;index of key_db
 l2:
     mov al, key_db[di] 
     mov ah,00h
-    mov si,ax 
+    mov si,ax      ;si->index of a student  
+    
 l4:
-    mov	dl, offset stu_db[si]
+    mov	dl, offset stu_db[si]       ;for show
+    
     mov bl, stu_db[si]
     cmp bl,3Bh
     jne l3
@@ -539,7 +549,7 @@ l4:
     inc di
     mov al, i  
     mov ah,00h
-    cmp di,ax
+    cmp di,ax        ;cmp length of key_db
     jne l2
     	 
 	jmp endshow
@@ -547,21 +557,23 @@ l3:
     mov ah,02h
     int 21h
     inc si
-    jmp l4	
+    jmp l4	 
+    
 endshow:
 	mov ah,1          ;just for wait
     int 21h	
+    
     ret
 show endp    
                    
-                   
-dfd proc   ;removed_db   
-    cmp j,00h
-    je  nodfd
+;************defrag stu_db proce*************                   
+dfd proc     
+    cmp j,00h   ;removed_db is empty    
+    je  nodfd    
     ;j>0  
     mov al, j
     mov ah, 00h    
-    mov si,ax 
+    mov si,ax    ;si->index for checking removed data base
      
 st: 
     dec si  
@@ -569,7 +581,7 @@ st:
     je  enddfd       
               
     mov bl,removed_db[si] 
-    mov bh,00h       
+    mov bh,00h            ;bx->index of removed std on the stu_db
      
 replace:    
     mov stu_db[bx],'@'  
@@ -586,43 +598,50 @@ nodfd:
     lea dx,message7
     mov ah,9
     int 21h          
-    ret     
+    ret
+         
 enddfd:
     lea dx,message8
     mov ah,9
     int 21h
     mov j,00h
     mov bx,0000h
-rein:
+    
+reinitremoved_db:
     mov removed_db[bx],'0'
     inc bx
     cmp bx,0005h
-    jne rein 
+    jne reinitremoved_db 
+    
+    ;go to the main defrag function
     call maindfd 
           
-    
-    lea dx,message9
+    lea dx,message9    ;defrag is done
     mov ah,09h
     int 21h  
        
     ret        
 dfd endp
-
+;************main_defrag proce************* 
 maindfd proc
-    mov bx,0ffffh  
+    mov bx,0ffffh   ;index for checking stu_db
+      
 star:
     inc bx
     cmp stu_db[bx],'@'
     je  findendof@    ;index of @ is in the bx
-    jmp star
+    jmp star  
+    
 findendof@:
-    mov si,bx 
+    mov si,bx         
+    
 inc_si:
     cmp si,index                       
     je  endmaindfd
     inc si   
     cmp stu_db[si],'@' 
     je  inc_si
+    
     jmp exchang       ;index of endof@ is in the si   
     
 exchang: 
@@ -640,12 +659,13 @@ exchang:
 endmaindfd:
     mov index,bx       
     ret   
-maindfd endp
+maindfd endp    
 
+;************load from file proce************* 
 lofi proc
     ;open
     mov ah, 3dh
-    mov al, 10b   
+    mov al, 10b    ;read/write  no limitation 
     lea dx, path
     int 21h
     mov handle_file, ax
@@ -661,7 +681,7 @@ lofi proc
     ret
 lofi endp 
    
-   
+;************save to file proce*************    
 safi proc 
     ;creat 
     mov ah,3ch
@@ -669,7 +689,7 @@ safi proc
     int 21h
     ;open
     mov ah, 3dh
-    mov al, 10b 
+    mov al, 10b         ;read/write  no limitation 
     lea dx,path
     int 21h    
     mov handle_file, ax 
@@ -682,13 +702,6 @@ safi proc
     int 21h
     ret
 safi endp  
-
-;creatFile
-
         
 codesg  ends
         end        main
-   
-   
-   
-   
