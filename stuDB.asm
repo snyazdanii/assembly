@@ -676,7 +676,7 @@ lofi proc
     lea dx,stu_db
     int 21h
     ;initial index 
-    dec ax
+    ;dec ax
     mov index,ax
     ret
 lofi endp 
